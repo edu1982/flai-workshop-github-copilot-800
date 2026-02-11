@@ -1,6 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from bson import ObjectId
+from django.shortcuts import get_object_or_404
 from .models import User, Team, Activity, Leaderboard, Workout
 from .serializers import (
     UserSerializer, TeamSerializer, ActivitySerializer,
@@ -14,6 +16,18 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    lookup_field = '_id'
+    
+    def get_object(self):
+        """
+        Override to handle MongoDB ObjectId lookups
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        filter_kwargs = {self.lookup_field: ObjectId(self.kwargs[lookup_url_kwarg])}
+        obj = get_object_or_404(queryset, **filter_kwargs)
+        self.check_object_permissions(self.request, obj)
+        return obj
     
     @action(detail=False, methods=['get'])
     def by_team(self, request):
